@@ -28,7 +28,7 @@ from nle import NLE
 from transforms import StarBatch
 
 RESULTS = Path('/scratch/tvnguyen/npe_inference')
-OUT = Path('/scratch/tvnguyen/projects/sbi_dsph/npe_gap/nle')
+OUT = Path(os.path.expanduser('~/scratch/projects/nle_dsph/inference'))
 LABELS = ('dm_alpha', 'dm_beta', 'dm_gamma', 'dm_log_rdm', 'dm_log_rho0',
           'df_beta0', 'df_log_ra')
 PRIOR_MIN = np.array([0.5, 2.5, -0.5, 0.0, 5.0, -0.499, -0.5, -50.0])

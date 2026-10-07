@@ -13,7 +13,8 @@ log10 rho(150 pc), z = (median - truth) / half-width, and the ratio of
 the joint model's half-width to the velocity-only one.
 
     python diagnostics/mock_sf_compare.py --los <run dir> --joint <run dir>
-Writes <out>/mock_sf_compare.csv and the chains as <out>/<set>_<mock>_<model>.npy.
+Writes <out>/mock_sf_compare.csv and the chains as
+<out>/<set>_<mock>_<model>.npy.
 """
 
 import argparse
@@ -43,7 +44,8 @@ OUT = Path(os.path.expanduser('~/scratch/projects/nle_dsph')) / 'mock_sf'
 
 def truth_labels(row: pd.Series, rhalf_kpc: float) -> np.ndarray:
     """Injected parameters in label space (radii in units of r_half)."""
-    log_ra = np.log10(row.r_a / rhalf_kpc) if np.isfinite(row.r_a) else PRIOR_MAX[6]
+    log_ra = (np.log10(row.r_a / rhalf_kpc) if np.isfinite(row.r_a)
+              else PRIOR_MAX[6])
     return np.array([row.alp, row.bet, row.gam, np.log10(row.r_s / rhalf_kpc),
                      np.log10(row.rho_s), row.beta0, log_ra])
 
@@ -53,8 +55,8 @@ def load_mock(set_dir: str, profile: str, meta):
     kw = {k: v for k, v in dict(apply_perspective_corr=True,
                                 vlos_abs_max=50.0).items()
           if k in inspect.signature(loader).parameters}
-    d = kio.load_kinematic_data(str(MOCKS / set_dir / f'{profile}_mock_catalog.csv'),
-                                meta, source='mock_icrs', **kw)
+    path = MOCKS / set_dir / f'{profile}_mock_catalog.csv'
+    d = kio.load_kinematic_data(str(path), meta, source='mock_icrs', **kw)
     return dict(X=d.X_proj.value.astype(np.float32),
                 Y=d.Y_proj.value.astype(np.float32),
                 v=d.vlos.value.astype(np.float32),
@@ -132,7 +134,8 @@ def main():
         best_checkpoint(a.los), map_location=dev, pre_transforms=None).eval()}
     if a.joint:
         models['joint'] = NLE.load_from_checkpoint(
-            best_checkpoint(a.joint), map_location=dev, pre_transforms=None).eval()
+            best_checkpoint(a.joint), map_location=dev,
+            pre_transforms=None).eval()
         assert not models['joint'].condition_on_position
     assert models['los'].condition_on_position
 
@@ -142,25 +145,31 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     rows = []
     for set_name in a.sets:
-        params = pd.read_csv(MOCKS / SETS[set_name] / 'mock_catalog_params.csv')
+        params = pd.read_csv(
+            MOCKS / SETS[set_name] / 'mock_catalog_params.csv')
         for profile in a.profiles:
             obs = load_mock(SETS[set_name], profile, meta)
-            truth = truth_labels(params[params.profile == profile].iloc[0], rhalf)
+            truth = truth_labels(
+                params[params.profile == profile].iloc[0], rhalf)
             tr150 = float(log_rho_150(truth[None], lrs)[0])
             hw, chains = {}, {}
             for name, m in models.items():
-                chain = sample(m, obs, lrs, a.n_walkers, a.n_steps, a.seed, dev)
+                chain = sample(m, obs, lrs, a.n_walkers, a.n_steps, a.seed,
+                               dev)
                 chains[name] = chain
                 np.save(OUT / f'{set_name}_{profile}_{name}.npy', chain)
                 lr = log_rho_150(chain[:, :7], lrs)
                 lo, med, hi = np.percentile(lr, [16, 50, 84])
                 hw[name] = 0.5 * (hi - lo)
-                rows.append(dict(set=set_name, mock=profile, model=name,
-                                 n_stars=len(obs['v']), truth=tr150, median=med,
-                                 halfwidth=hw[name], z=(med - tr150) / hw[name]))
-                print(f'{set_name:8s} {profile:8s} {name:5s} n={len(obs["v"]):3d} '
-                      f'log rho150 = {med:.3f} +- {hw[name]:.3f} (truth {tr150:.3f}, '
-                      f'z {(med - tr150) / hw[name]:+.2f})', flush=True)
+                z = (med - tr150) / hw[name]
+                rows.append(dict(
+                    set=set_name, mock=profile, model=name,
+                    n_stars=len(obs['v']), truth=tr150, median=med,
+                    halfwidth=hw[name], z=z))
+                print(f'{set_name:8s} {profile:8s} {name:5s} '
+                      f'n={len(obs["v"]):3d} log rho150 = {med:.3f} '
+                      f'+- {hw[name]:.3f} (truth {tr150:.3f}, z {z:+.2f})',
+                      flush=True)
             if 'joint' in hw:
                 leak_std, leak_corr = position_factor_leak(
                     models, obs, lrs, chains['los'], dev)

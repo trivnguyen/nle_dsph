@@ -27,7 +27,8 @@ from transforms import build_transformation
 
 
 def save_config_snapshot(
-    config: ml_collections.ConfigDict, snapshot_dir: Path, config_path: str = None,
+    config: ml_collections.ConfigDict, snapshot_dir: Path,
+    config_path: str = None,
 ) -> None:
     """Write a JSON (and .py) config snapshot next to the checkpoints.
 
@@ -100,7 +101,9 @@ def prepare_data(config: ml_collections.ConfigDict, norm_dict=None):
     return train_loader, val_loader, norm_dict
 
 
-def create_model(config: ml_collections.ConfigDict, pre_transforms, norm_dict) -> NLE:
+def create_model(
+    config: ml_collections.ConfigDict, pre_transforms, norm_dict,
+) -> NLE:
     """Create the NLE model from the config."""
     print("[Model] Creating NLE model...")
     context_embedding = config.model.get('context_embedding', None)
@@ -111,8 +114,10 @@ def create_model(config: ml_collections.ConfigDict, pre_transforms, norm_dict) -
         norm_dict=norm_dict,
         condition_on_position=config.model.get('condition_on_position', False),
         condition_on_radius=config.model.get('condition_on_radius', False),
-        # a model trained without measurement noise has no sigma to condition on
-        condition_on_error=config.pre_transforms.get('apply_uncertainty', True),
+        # Reason: a model trained without measurement noise has no sigma
+        # to condition on.
+        condition_on_error=config.pre_transforms.get(
+            'apply_uncertainty', True),
         flows_args=config.model.flows.to_dict(),
         context_embedding_args=context_embedding,
         optimizer_args=config.optimizer.to_dict(),
@@ -142,7 +147,8 @@ def main(config: ml_collections.ConfigDict, config_path: str = None):
     if resume_training:
         checkpoint_path = training.get_checkpoint_path(config, project_dir)
         print(f"[Checkpoint] Resuming from: {checkpoint_path}")
-        print(f"[Checkpoint] Reset optimizer: {config.get('reset_optimizer', False)}")
+        print("[Checkpoint] Reset optimizer: "
+              f"{config.get('reset_optimizer', False)}")
 
         # Reuse the norm_dict from the resumed checkpoint's hyper_parameters.
         resume_checkpoint = torch.load(
@@ -151,8 +157,10 @@ def main(config: ml_collections.ConfigDict, config_path: str = None):
         print("[Checkpoint] Reusing norm_dict from resumed checkpoint")
 
     print("[Data] Loading datasets...")
-    train_loader, val_loader, norm_dict = prepare_data(config, norm_dict=norm_dict)
-    print(f"[Data] Train batches: {len(train_loader)}, Val batches: {len(val_loader)}")
+    train_loader, val_loader, norm_dict = prepare_data(
+        config, norm_dict=norm_dict)
+    print(f"[Data] Train batches: {len(train_loader)}, "
+          f"Val batches: {len(val_loader)}")
     if torch.cuda.is_available():
         # Return the data-preparation scratch (norm statistics, index
         # temporaries) to the system so concurrent runs can use it.

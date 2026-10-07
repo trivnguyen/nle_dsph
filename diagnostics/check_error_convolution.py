@@ -1,7 +1,8 @@
 """Does a noise-trained NLE equal the noiseless NLE convolved with the errors?
 
 If the per-star likelihoods are learned exactly,
-    p_noisy(v_obs | R, theta, sigma) = Int p_clean(v | R, theta) N(v_obs; v, sigma) dv
+    p_noisy(v_obs | R, theta, sigma)
+        = Int p_clean(v | R, theta) N(v_obs; v, sigma) dv
 for every sigma. This script evaluates both sides at the TRUE theta on
 held-out galaxies, for a few fixed sigma values, and reports the
 difference per star and summed per galaxy (the quantity that drives a
@@ -17,7 +18,8 @@ log-densities are converted to per-km/s before differencing.
 
     python diagnostics/check_error_convolution.py \
         --clean <run dir of the noiseless model> \
-        --noisy <run dir of the noisy model> [--noisy2 <another noisy run dir>] \
+        --noisy <run dir of the noisy model> \
+        [--noisy2 <another noisy run dir>] \
         [--shard 40] [--n-gal 3000] [--sigmas 0.3 1 3 10]
 Writes <clean run dir>/error_convolution_<tag>.csv and .png.
 """
@@ -25,12 +27,19 @@ Writes <clean run dir>/error_convolution_<tag>.csv and .png.
 import argparse, math, os, sys
 from pathlib import Path
 
-import h5py, numpy as np, torch
+import matplotlib
+import numpy as np
+import pandas as pd
+import torch
+
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from nle import NLE  # noqa: E402
 from transforms import StarBatch  # noqa: E402
-from diagnostics.pit_by_regime import best_checkpoint, load_shard, LABELS  # noqa: E402
+from diagnostics.pit_by_regime import (  # noqa: E402
+    best_checkpoint, load_shard, LABELS)
 
 
 def log_prob(m, R, v, err, theta, lrs):
@@ -96,7 +105,8 @@ def main():
     mc = NLE.load_from_checkpoint(best_checkpoint(a.clean), map_location=dev,
                                   pre_transforms=None).eval()
     noisy = {'noisy': NLE.load_from_checkpoint(
-        best_checkpoint(a.noisy), map_location=dev, pre_transforms=None).eval()}
+        best_checkpoint(a.noisy), map_location=dev,
+        pre_transforms=None).eval()}
     if a.noisy2:
         noisy['noisy2'] = NLE.load_from_checkpoint(
             best_checkpoint(a.noisy2), map_location=dev,
@@ -116,7 +126,6 @@ def main():
     gid_d = gid.to(dev)
     torch.manual_seed(a.seed)
 
-    import pandas as pd
     rows, per_star = [], {}
     with torch.no_grad():
         for sigma in a.sigmas:
@@ -150,15 +159,13 @@ def main():
     out = Path(a.clean) / f'error_convolution_{tag}.csv'
     df.to_csv(out, index=False)
     pd.set_option('display.width', 250)
-    print('d = log p_noisy - log Int p_clean N  (nats); star = per star, gal = summed per galaxy')
+    print('d = log p_noisy - log Int p_clean N  (nats); '
+          'star = per star, gal = summed per galaxy')
     print(df.round(4).to_string(index=False))
     print(f'-> {out}')
 
     # posterior-level: scan dm_log_rho0 for 6 galaxies at sigma = 1 and 3
     try:
-        import matplotlib
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
         k = LABELS.index('dm_log_rho0')
         gsel = torch.arange(G)[(sig_true > 2) & (sig_true < 15)][:6]
         fig, axes = plt.subplots(2, len(gsel), figsize=(3.2 * len(gsel), 6),
@@ -168,7 +175,8 @@ def main():
             for col, g in enumerate(gsel):
                 mk = (gid_d == int(g))
                 for row, sigma in enumerate((1.0, 3.0)):
-                    v_obs = vt[mk] + sigma * torch.randn(int(mk.sum()), device=dev)
+                    v_obs = vt[mk] + sigma * torch.randn(int(mk.sum()),
+                                                         device=dev)
                     err = torch.full_like(v_obs, sigma)
                     curves = {name: [] for name in noisy}
                     curves['conv'] = []
@@ -182,10 +190,12 @@ def main():
                                 mn, R[mk], v_obs, err, tt, lr[mk]).sum()))
                     ax = axes[row, col]
                     for name, c in curves.items():
-                        c = np.array(c); ax.plot(scan.cpu(), c - c.max(), label=name)
+                        c = np.array(c)
+                        ax.plot(scan.cpu(), c - c.max(), label=name)
                     ax.axvline(float(th[g, k]), color='k', ls=':', lw=1)
                     ax.set_ylim(-30, 1)
-                    ax.set_title(f'gal {int(g)}, sigma_true={sig_true[g]:.1f}, '
+                    ax.set_title(f'gal {int(g)}, '
+                                 f'sigma_true={sig_true[g]:.1f}, '
                                  f'err={sigma}', fontsize=8)
                     if col == 0:
                         ax.set_ylabel('log L - max')

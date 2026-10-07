@@ -37,6 +37,7 @@ import emcee
 import numpy as np
 import pandas as pd
 import torch
+from scipy.stats import kstest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from nle import NLE  # noqa: E402
@@ -49,7 +50,11 @@ OUT = Path(os.path.expanduser('~/scratch/projects/nle_dsph')) / 'coverage'
 
 
 class Term:
-    """One additive term of the galaxy log-likelihood: a model on a star subset."""
+    """One additive term of the galaxy log-likelihood.
+
+    A model applied to the subset of stars that carries its measurement;
+    a galaxy with mixed completeness is a sum of such terms.
+    """
 
     def __init__(self, model, R, vel, err, lrs):
         self.model = model
@@ -64,7 +69,8 @@ class Term:
         pos = torch.zeros((nw * n, 2), device=theta.device)
         pos[:, 0] = self.R.repeat(nw)
         b = StarBatch(
-            pos=pos, vel=self.vel.repeat(nw, 1), vel_error=self.err.repeat(nw, 1),
+            pos=pos, vel=self.vel.repeat(nw, 1),
+            vel_error=self.err.repeat(nw, 1),
             theta=theta.repeat_interleave(n, 0),
             cond=torch.full((nw * n, 1), self.lrs, device=theta.device))
         lp = self.model.log_prob(b).view(nw, n)
@@ -117,7 +123,8 @@ def build_cases(mode, pos, vel, n, errs, models, rng):
         e_pm = torch.full((n, 2), errs['pm'])
         half = torch.zeros(n, dtype=torch.bool)
         half[torch.from_numpy(rng.permutation(n)[: n // 2])] = True
-        yield 'los_all', [('los', torch.ones(n, dtype=torch.bool), v_los, e_los)]
+        yield 'los_all', [('los', torch.ones(n, dtype=torch.bool), v_los,
+                           e_los)]
         yield 'mixed', [('los', half, v_los, e_los), ('pm', ~half, v_pm, e_pm)]
         yield 'v3d_all', [('v3d', torch.ones(n, dtype=torch.bool),
                            torch.cat([v_los, v_pm], 1),
@@ -145,7 +152,8 @@ def main():
         rd = getattr(a, key)
         if rd:
             models[key] = NLE.load_from_checkpoint(
-                best_checkpoint(rd), map_location=dev, pre_transforms=None).eval()
+                best_checkpoint(rd), map_location=dev,
+                pre_transforms=None).eval()
     if a.mode == 'mixed' and not {'los', 'pm', 'v3d'} <= set(models):
         ap.error('--mode mixed needs --los, --pm and --v3d')
 
@@ -181,14 +189,14 @@ def main():
     tag = a.tag or f'shard{a.shard}'
     print('\ncase | galaxies | median half-width of log10 rho(150 pc) (dex) | '
           'rms z | frac |z|<=1 (0.68) | mean z | PIT KS p')
-    from scipy.stats import kstest
     for case, rs in rows.items():
         df = pd.DataFrame(rs)
         df.to_csv(OUT / f'{a.mode}_{case}_{tag}.csv', index=False)
         ks = kstest(df.pit, 'uniform').pvalue
         print(f'{case:8s} | {len(df):4d} | {df.halfwidth.median():.3f} | '
               f'{np.sqrt((df.z ** 2).mean()):.2f} | '
-              f'{(df.z.abs() <= 1).mean():.2f} | {df.z.mean():+.2f} | {ks:.3f}')
+              f'{(df.z.abs() <= 1).mean():.2f} | {df.z.mean():+.2f} | '
+              f'{ks:.3f}')
     print(f'-> {OUT}')
 
 

@@ -26,7 +26,8 @@ def get_config():
     config.train_frac = 0.95
     config.num_workers = 0
 
-    config.workdir = '/home/tnguyen/scratch/projects/sbi_dsph/trained_models/nle'
+    config.workdir = ('/home/tnguyen/scratch/projects/sbi_dsph/'
+                      'trained_models/nle')
     config.wandb_project = 'nle_8p_ZhaoPlumCOM_v4'
     config.entity = 'sbi_dsph'
     config.name = None

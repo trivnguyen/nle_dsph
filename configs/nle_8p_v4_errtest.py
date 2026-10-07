@@ -9,7 +9,8 @@ p(v_obs | log R, theta, log r_half, sigma_v); `joint` models
 p(x, y, v_obs | theta, log r_half, sigma_v) with the sky position as a
 target (the control for the selection-function test). Both: 2 shards (~200k
 galaxies, 20M stars), the T2 architecture, batch 16384, 30k steps, same
-data seed, same galaxy split. The check (diagnostics/check_error_convolution.py):
+data seed, same galaxy split. The check
+(diagnostics/check_error_convolution.py):
 convolving `clean` with N(0, sigma^2) should reproduce `noisy`.
 """
 

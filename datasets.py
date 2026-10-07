@@ -16,7 +16,7 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
-from transforms import StarBatch, compute_field_norm
+from transforms import StarBatch, build_transformation, compute_field_norm
 
 
 def read_graph_dataset(path, features_list=None, concat=False, to_array=True):
@@ -72,7 +72,8 @@ def read_graph_dataset(path, features_list=None, concat=False, to_array=True):
 
 
 def read_datasets(
-    root, name, num_datasets=100, init=0, is_directory=True, concat=True, ext='.h5'
+    root, name, num_datasets=100, init=0, is_directory=True, concat=True,
+    ext='.h5',
 ):
     """Read and concatenate multiple HDF5 dataset files."""
     if ext[0] != '.':
@@ -400,7 +401,8 @@ class FixedStarBatches:
         self.batch_size = batch_size
 
     def __len__(self):
-        return (self.batch.pos.shape[0] + self.batch_size - 1) // self.batch_size
+        n = self.batch.pos.shape[0]
+        return (n + self.batch_size - 1) // self.batch_size
 
     def __iter__(self):
         b = self.batch
@@ -448,8 +450,6 @@ def prepare_device_dataloaders(
     measured on the training stars exactly as before, but under a fixed
     seed so that two runs on the same data share it bit for bit.
     """
-    from transforms import build_transformation
-
     pre_transform_kwargs = pre_transform_kwargs or {}
     num_stars = data['num_stars']
     G = len(num_stars)
@@ -471,9 +471,10 @@ def prepare_device_dataloaders(
     def stars_of(gals):
         gals = torch.as_tensor(np.sort(gals))
         starts, counts = offsets[gals], ns_t[gals]
-        return torch.repeat_interleave(starts, counts) + (
-            torch.arange(int(counts.sum()))
-            - torch.repeat_interleave(torch.cumsum(counts, 0) - counts, counts))
+        first = torch.repeat_interleave(torch.cumsum(counts, 0) - counts,
+                                        counts)
+        within = torch.arange(int(counts.sum())) - first
+        return torch.repeat_interleave(starts, counts) + within
 
     train_idx = stars_of(train_gal)
     val_idx = stars_of(val_gal)
@@ -495,7 +496,8 @@ def prepare_device_dataloaders(
         # norm uses) equal those of the per-star broadcast, at 1/100 the
         # memory.
         tg = torch.as_tensor(np.sort(train_gal), device=device)
-        with torch.random.fork_rng(devices=[device] if 'cuda' in str(device) else []):
+        rng_devices = [device] if 'cuda' in str(device) else []
+        with torch.random.fork_rng(devices=rng_devices):
             torch.manual_seed(seed)
             norm_dict = compute_field_norm(
                 StarBatch(pos=pos[train_idx], vel=vel[train_idx],

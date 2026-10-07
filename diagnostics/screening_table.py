@@ -12,6 +12,7 @@ import glob
 import os
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import torch
@@ -65,7 +66,6 @@ def main():
         t = re.findall(r'\[(\S+ \S+)\] =+ run (start|end)', man)
         wall = '-'
         if len(t) == 2:
-            from datetime import datetime
             f = '%Y-%m-%d %H:%M:%S'
             wall = str(datetime.strptime(t[1][0], f)
                        - datetime.strptime(t[0][0], f))

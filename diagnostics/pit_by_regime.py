@@ -16,7 +16,10 @@ Writes <run dir>/pit_by_regime.csv and prints the table.
 import argparse, glob, math, os, sys
 from pathlib import Path
 
-import h5py, numpy as np, torch
+import h5py
+import numpy as np
+import pandas as pd
+import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from nle import NLE  # noqa: E402
@@ -28,13 +31,32 @@ DATA = Path(os.path.expanduser(
     '~/scratch/projects/sbi_dsph/datasets/8p_ZhaoPlumCOM_v4'))
 
 
-def best_checkpoint(run_dir):
+def best_checkpoint(run_dir) -> str:
+    """Return the checkpoint with the lowest validation loss in its name.
+
+    Args:
+        run_dir: Run directory holding a `checkpoints/` folder.
+
+    Returns:
+        Path of the `*-loss=<val>.ckpt` file with the smallest `<val>`.
+    """
     cks = [c for c in glob.glob(f'{run_dir}/checkpoints/*.ckpt')
            if 'loss=' in c]
     return min(cks, key=lambda c: float(c.split('loss=')[1][:-5]))
 
 
-def load_shard(i, n_gal):
+def load_shard(i: int, n_gal: int) -> tuple:
+    """Read the first `n_gal` galaxies of dataset shard `i` as float32.
+
+    Args:
+        i: Shard index (`data.<i>.h5`).
+        n_gal: Number of galaxies to read from the start of the shard.
+
+    Returns:
+        Tuple `(pos, vel, theta, log_rstar, num_stars)`: per-star 3-D
+        positions and velocities, and per-galaxy labels, log10 r_half
+        [kpc] and star counts.
+    """
     with h5py.File(DATA / f'data.{i}.h5', 'r') as h:
         ptr = h['ptr'][:n_gal + 1]
         n = h['num_stars'][:n_gal]
@@ -109,7 +131,6 @@ def main():
                          nll_gauss=float(-lp_g.mean()),
                          pit_mean=float(pit.mean()), pit_std=float(pit.std()),
                          tail3=float((z.abs() > 3).float().mean())))
-    import pandas as pd
     df = pd.DataFrame(rows)
     out = Path(a.run_dir) / 'pit_by_regime.csv'
     df.to_csv(out, index=False)

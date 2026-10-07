@@ -28,7 +28,8 @@ def _wandb_server_reachable(timeout: float = 3.0) -> bool:
     (e.g. HPC compute nodes).
     """
     try:
-        socket.create_connection(("api.wandb.ai", 443), timeout=timeout).close()
+        socket.create_connection(
+            ("api.wandb.ai", 443), timeout=timeout).close()
         return True
     except OSError:
         return False
@@ -136,7 +137,8 @@ def build_trainer(
     **trainer_kwargs,
 ) -> pl.Trainer:
     """Construct the PyTorch Lightning Trainer."""
-    print(f"[Trainer] Max epochs: {config.num_epochs}, Max steps: {config.num_steps}")
+    print(f"[Trainer] Max epochs: {config.num_epochs}, "
+          f"Max steps: {config.num_steps}")
     print(f"[Trainer] Accelerator: {config.accelerator}")
 
     # Numerical precision of the training step. '32-true' (default) is

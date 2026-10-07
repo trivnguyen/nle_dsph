@@ -33,7 +33,8 @@ def build_flow(
     """Build a conditional zuko flow for p(target | context)."""
     kwargs = dict(transforms=num_transforms, hidden_features=hidden_features)
     if activation is not None:
-        kwargs['activation'] = get_activation(activation, return_instance=False)
+        kwargs['activation'] = get_activation(
+            activation, return_instance=False)
 
     if flow_type == 'spline':
         return zuko.flows.NSF(features, context, bins=num_bins, **kwargs)
@@ -152,18 +153,20 @@ class NLE(pl.LightningModule):
             self.context_embedding = MLP(
                 input_size=context_size, act=act, **args)
             flow_context_size = self.context_embedding.output_size
+            n_ctx = sum(p.numel()
+                        for p in self.context_embedding.parameters())
             print(f"[NLE] Context MLP {context_size} -> {flow_context_size} "
-                  f"with {sum(p.numel() for p in self.context_embedding.parameters()):,}"
-                  f" parameters")
+                  f"with {n_ctx:,} parameters")
         else:
             self.context_embedding = nn.Identity()
             flow_context_size = context_size
 
-        self.flow = build_flow(target_size, flow_context_size, **self.flows_args)
+        self.flow = build_flow(
+            target_size, flow_context_size, **self.flows_args)
         print(f"[NLE] Modeling p({','.join(self.target_fields)} | "
               f"{','.join(self.context_fields)})")
-        print(f"[NLE] Flow built with"
-              f" {sum(p.numel() for p in self.flow.parameters()):,} parameters")
+        n_flow = sum(p.numel() for p in self.flow.parameters())
+        print(f"[NLE] Flow built with {n_flow:,} parameters")
 
     # -- normalization / assembly ------------------------------------------
 
@@ -272,7 +275,8 @@ class NLE(pl.LightningModule):
             self._assemble(norm_batch, self.context_fields))
         samples = self.flow(context).sample((num_samples,))
 
-        loc = torch.cat([getattr(self, f'{f}_loc') for f in self.target_fields])
+        loc = torch.cat(
+            [getattr(self, f'{f}_loc') for f in self.target_fields])
         scale = torch.cat(
             [getattr(self, f'{f}_scale') for f in self.target_fields])
         samples = samples * scale + loc

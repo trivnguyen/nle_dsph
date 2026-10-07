@@ -76,7 +76,7 @@ $$p_{\\rm clean}(v \\mid \\log R,\\, \\theta,\\, \\log r_{1/2}).$$
 If both flows are faithful, the first is the second convolved with the error
 kernel,
 
-$$p_{\\rm noisy}(v_{\\rm obs}\\mid\\sigma_v) \;=\; \\int p_{\\rm clean}(v)\;
+$$p_{\\rm noisy}(v_{\\rm obs}\\mid\\sigma_v) = \\int p_{\\rm clean}(v)\\,
 \\mathcal N(v_{\\rm obs};\\, v,\\, \\sigma_v^2)\\, {\\rm d}v ,$$
 
 for every $\\sigma_v$ and every context. Two reasons to check it:

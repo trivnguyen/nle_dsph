@@ -39,7 +39,8 @@ from diagnostics.pit_by_regime import best_checkpoint  # noqa: E402
 MOCKS = Path(os.path.expanduser('~/scratch/vr_catalogs/vr_catalogs/mock/icrs'))
 SETS = {'walker23': 'draco1_walker23_icrs', 'noSF': 'draco1_walker23_noSF'}
 PROFILES = ('CuspIso', 'CoreIso', 'CuspOM', 'CoreOM', 'CuspTan', 'CoreTan')
-OUT = Path(os.path.expanduser('~/scratch/projects/nle_dsph')) / 'mock_sf'
+OUT = Path(os.path.expanduser(os.environ.get(
+    'NLE_MOCK_SF_OUT', '~/scratch/projects/nle_dsph/mock_sf')))
 
 
 def truth_labels(row: pd.Series, rhalf_kpc: float) -> np.ndarray:

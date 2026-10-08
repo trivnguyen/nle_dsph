@@ -482,3 +482,48 @@ node count squared (289 at 17 nodes), so the marginalised 3-D likelihood
 is ~300x the mixed likelihood per call; the mixed likelihood is the
 practical route, and this test is the evidence that it is the same
 likelihood.
+
+## 14. Production model and acceptance tests (2026-10-08)
+
+Run 99r3e7ve (`by_name/production_A`): arm A, 57 shards, batch 16384,
+500k steps, fp32, seed 792139710; stopped at 300k and resumed from
+last.ckpt the same day. Best val/loss -2.6045 at step 494545 (T2 model
+-2.563; same architecture at 60k steps -2.6036).
+
+Test 1, calibration on held-out shards 31+32 (7.9M stars, errors 0.3/1/3
+km/s; `diagnostics/pit_by_regime.py`): PIT mean 0.4997/0.4998, std
+0.2885, tail 0.0027/0.0026 overall; in every bin with err >= 1 and
+sigma_true >= 1 km/s, |PIT mean - 0.5| <= 0.0013 and |PIT std - 0.2887|
+<= 0.0019. NLL better than the T2 model by 0.035-0.040 nats/star in
+every bin. PASS.
+
+Test 2, replay of the 12 Draco mocks (emcee 64 x 5000, r_half fixed,
+`mock_sf_compare.py --los production_A`, results
+`~/scratch/projects/nle_dsph/mock_sf_production/`). log10 rho(150 pc)
+median +- half-width (dex) and z, production vs the T2 page:
+
+| set | mock | truth | production | z | T2 | z | hw ratio |
+|---|---|---|---|---|---|---|---|
+| walker23 | CuspIso | 8.070 | 8.107 +- 0.035 | +1.06 | 8.109 +- 0.035 | +1.12 | 1.01 |
+| walker23 | CoreIso | 7.894 | 7.955 +- 0.042 | +1.43 | 7.953 +- 0.044 | +1.34 | 0.96 |
+| walker23 | CuspOM | 8.070 | 8.097 +- 0.036 | +0.76 | 8.094 +- 0.042 | +0.58 | 0.86 |
+| walker23 | CoreOM | 7.894 | 7.876 +- 0.074 | -0.24 | 7.881 +- 0.069 | -0.19 | 1.07 |
+| walker23 | CuspTan | 8.070 | 7.979 +- 0.047 | -1.93 | 7.996 +- 0.047 | -1.57 | 1.00 |
+| walker23 | CoreTan | 7.894 | 7.927 +- 0.060 | +0.54 | 7.935 +- 0.071 | +0.58 | 0.85 |
+| noSF | CuspIso | 8.110 | 8.049 +- 0.067 | -0.91 | 8.057 +- 0.068 | -0.78 | 0.98 |
+| noSF | CoreIso | 7.934 | 7.966 +- 0.060 | +0.54 | 7.955 +- 0.061 | +0.34 | 0.98 |
+| noSF | CuspOM | 8.110 | 8.181 +- 0.047 | +1.51 | 8.184 +- 0.047 | +1.58 | 1.01 |
+| noSF | CoreOM | 7.934 | 7.968 +- 0.095 | +0.36 | 7.959 +- 0.096 | +0.26 | 0.99 |
+| noSF | CuspTan | 8.110 | 8.231 +- 0.069 | +1.76 | 8.216 +- 0.067 | +1.59 | 1.03 |
+| noSF | CoreTan | 7.934 | 8.163 +- 0.068 | +3.34 | 8.052 +- 0.081 | +1.46 | 0.84 |
+
+Eleven of twelve medians agree with T2 within 0.02 dex and the
+half-widths within 15% (median ratio 0.98): the 11x larger training set
+does not change the posteriors on these mocks, which is consistent with
+the two models' per-star densities agreeing to ~0.04 nats and the width
+being set by the data. The exception is noSF CoreTan, +0.11 dex from T2
+and z = +3.3 (a seed re-sample and a T2 re-sample on that mock are in
+`mock_sf_production/seed_check/`). Summary: rms z 1.46 vs 1.09, mean z
++0.69 vs +0.53, 6/12 within |z| <= 1 for both. The +0.5 mean z the T2
+page flagged persists with the larger model and the same twelve mocks;
+it needs the few-hundred-mock coverage test, not more training.

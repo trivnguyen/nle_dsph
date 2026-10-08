@@ -444,3 +444,41 @@ star subsets, is calibrated. Its width sits near the v_los-only width
 rather than between the two, which is what one expects when each star
 contributes one of the two informative components; the 3-D model on
 every star is 7% narrower.
+
+## 13. Marginalisation test: mixed likelihood vs the 3-D model with
+## missing components integrated (2026-10-08)
+
+Question: is the product of the single-component models, p(v_los | ...)
+on one star subset times p(v_x, v_y | ...) on the other, the same
+likelihood as the 3-D model p(v_los, v_x, v_y | ...) with each star's
+unmeasured components integrated out? Models: the 2-shard arm-A trio
+(6xaw28uw, ygaheh7u, 0i9cclad). Script `diagnostics/marginal_test.py`;
+outputs `~/scratch/projects/nle_dsph/marginal/`.
+
+Per star (200 held-out galaxies of shard 42, true theta, 2 km/s on
+v_los and 5 km/s per proper-motion component, trapezoid quadrature on
+33 nodes per missing dimension over +-7 velocity scales; densities
+converted to per (km/s)^k): d = log p_single - log marginal_v3d has
+mean within +-0.005 nats per star and rms 0.08-0.14 in every sigma_true
+bin; summed per galaxy, |mean| <= 0.5 and rms ~1 nat, incoherent. 17
+nodes bias d by up to 0.02 nats/star; assigning 10 instead of 3 km/s to
+the missing component's error (the marginal must not depend on it)
+shifts d by <= 0.01 nats/star. Same agreement level as the convolution
+test of section 9.
+
+Posterior (20 galaxies, emcee 48 x 1000, v_los on a random half of the
+stars and (v_x, v_y) on the other half, 17 nodes): on the 13 galaxies
+with sigma_true > 1 km/s, the mixed and marginalised posteriors of
+log10 rho(150 pc) differ in median by 0.25 half-widths (median over
+galaxies, max 1.06) with a half-width ratio marg/mixed of 1.06 (median;
+range 0.74-1.63); rms z 0.72 vs 0.69. The 3-D model with every star
+fully measured is 20% narrower (median half-width 0.203 vs 0.250 dex).
+The 7 galaxies with sigma_true < 1 km/s are prior-dominated (1-2 dex
+wide) and uninformative. Corner and profile figures:
+`marginal/figures/{corner,profiles}_g<g>.png`.
+
+Cost: the 2-D integration multiplies the per-star evaluations by the
+node count squared (289 at 17 nodes), so the marginalised 3-D likelihood
+is ~300x the mixed likelihood per call; the mixed likelihood is the
+practical route, and this test is the evidence that it is the same
+likelihood.

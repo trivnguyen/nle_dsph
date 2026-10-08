@@ -133,7 +133,7 @@ def create_callbacks(config: ml_collections.ConfigDict) -> list:
 
 def main(config: ml_collections.ConfigDict, config_path: str = None):
     """Train the NLE model with wandb logging."""
-    resume_training = config.get('checkpoint') is not None
+    resume_training = bool(config.get('checkpoint'))
     wandb_logger, project_dir = training.create_wandb_logger(config, tag='nle')
 
     print(f"[Setup] Resume training: {resume_training}")

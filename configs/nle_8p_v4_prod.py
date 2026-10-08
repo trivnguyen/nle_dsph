@@ -52,8 +52,10 @@ def get_config():
     config.name = 'prod_57sh_A'
     config.tags = ['nle', 'production', '57shards']
     config.debug = False
-    config.checkpoint = None
-    config.id = None  # wandb run id to resume into (with checkpoint)
+    # Empty string = unset: ml_collections cannot override a None field
+    # from the command line, and a resume needs both set at launch.
+    config.checkpoint = ''
+    config.id = ''  # wandb run id to resume into
     config.reset_optimizer = False
     config.enable_progress_bar = True
     config.save_top_k = 3

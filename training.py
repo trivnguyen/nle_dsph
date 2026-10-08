@@ -58,7 +58,7 @@ def create_wandb_logger(config: ml_collections.ConfigDict, tag: str):
         project=config.get("wandb_project", "nle_dsph"),
         name=config.get("name"),
         entity=config.get("entity", None),
-        id=config.get("id", None),
+        id=config.get("id") or None,
         save_dir=str(workdir),
         log_model="all",
         config=config.to_dict(),
@@ -77,7 +77,7 @@ def get_checkpoint_path(
     config: ml_collections.ConfigDict, project_dir: Optional[Path] = None,
 ) -> Optional[str]:
     """Resolve the checkpoint path to resume from, if any."""
-    if config.get('checkpoint') is None:
+    if not config.get('checkpoint'):
         return None
 
     ckpt = config.checkpoint

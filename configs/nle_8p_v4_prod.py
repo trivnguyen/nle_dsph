@@ -9,8 +9,9 @@ Differences from nle_8p_v4.py
   data      5 -> 57 shards (5.48M galaxies, 540M stars), train_frac 0.98
   batch     4096 -> 16384 (GPU step time is launch-bound: ~flat up to 16k)
   steps     100k -> 500k (8.2B star-draws, ~15 epochs; 5-shard run: 0.41B)
-  model     4x[128,128]/8 bins/ctx 64 -> 5x[256,256]/16 bins/ctx 128
-            (= screening arm B; swap in the winner of nle_8p_v4_screen.py)
+  model     4x[128,128]/8 bins/ctx 64, unchanged: screening arm A tied
+            B, C, D at -2.604 nats on 60k steps (2026-10-07), so the
+            smallest architecture is kept
   val       deterministic held-out set capped at 50k galaxies, checked
             every 10k steps instead of once per epoch
 `precision` and `matmul_precision` are implemented (training.py, nle.py).
@@ -25,7 +26,7 @@ from ml_collections import ConfigDict
 def get_config():
     config = ConfigDict()
     config.seed_data = 213189751
-    config.seed_training = 792139710   # production seed A; seed B: 46598
+    config.seed_training = 792139710
 
     config.data_root = '/home/tnguyen/scratch/projects/sbi_dsph/datasets'
     config.data_name = '8p_ZhaoPlumCOM_v4'
@@ -48,7 +49,7 @@ def get_config():
                       'trained_models/nle')
     config.wandb_project = 'nle_8p_ZhaoPlumCOM_v4'
     config.entity = 'sbi_dsph'
-    config.name = 'prod_57sh_B_seedA'
+    config.name = 'prod_57sh_A'
     config.tags = ['nle', 'production', '57shards']
     config.debug = False
     config.checkpoint = None
@@ -61,13 +62,13 @@ def get_config():
     model.condition_on_radius = True
     model.flows = ConfigDict()
     model.flows.flow_type = 'spline'
-    model.flows.num_transforms = 5
-    model.flows.hidden_features = [256, 256]
-    model.flows.num_bins = 16
+    model.flows.num_transforms = 4
+    model.flows.hidden_features = [128, 128]
+    model.flows.num_bins = 8
     model.flows.activation = 'tanh'
     model.context_embedding = ConfigDict()
-    model.context_embedding.hidden_sizes = [256, 256]
-    model.context_embedding.output_size = 128
+    model.context_embedding.hidden_sizes = [128, 128]
+    model.context_embedding.output_size = 64
     model.context_embedding.act_name = 'relu'
     model.context_embedding.batch_norm = False
     model.context_embedding.dropout = 0.0

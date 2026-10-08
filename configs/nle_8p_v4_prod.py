@@ -53,6 +53,7 @@ def get_config():
     config.tags = ['nle', 'production', '57shards']
     config.debug = False
     config.checkpoint = None
+    config.id = None  # wandb run id to resume into (with checkpoint)
     config.reset_optimizer = False
     config.enable_progress_bar = True
     config.save_top_k = 3

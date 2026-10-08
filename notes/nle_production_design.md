@@ -389,3 +389,58 @@ the same cost to train); sample with the noisy model; validate on the
 paper's test cases by reweighting or re-sampling with the convolved
 noiseless likelihood, which is also the path for a non-Gaussian error
 kernel.
+
+## 10. Screening result (2026-10-07)
+
+57 shards, 60k steps at batch 16384, fixed 50k-galaxy validation set.
+Best val/loss (nats per star): A 4x[128,128]/8 bins/ctx 64 (137k params)
+-2.6036; B 5x[256,256]/16/ctx 128 (656k) -2.6038; C 8 transforms (989k)
+-2.6038; D = B with SiLU -2.6040; E = B without context MLP (403k)
+-2.6014. A-D tie within 0.0005; the tie rule picks A. Production run
+99r3e7ve launched 2026-10-08 with arm A, one seed (user's decision).
+
+## 11. Selection-function tests (2026-10-07/08)
+
+The velocity-only model p(v_los | log R, theta, log r_half, sigma) has
+position only as context, so a position-only selection cancels from the
+likelihood by construction. Tested two ways with the 2-shard models.
+
+Coverage on 100 held-out galaxies (shard 41, 2 km/s errors, emcee 48 x
+1000): keeping all stars / only R < r_half / only R > r_half gives rms z
+1.02 / 0.99 / 0.91, mean z +0.19 / +0.16 / +0.14, PIT KS p 0.35 / 0.28 /
+0.09, median half-width 0.57 / 0.71 / 0.68 dex. Calibration unchanged by
+the selection; only the width moves.
+
+Velocity-only against the joint model p(x, y, v_los | theta, log r_half,
+sigma) (run 5srmof4g, same data and budget) on the 12 Draco mocks
+(`diagnostics/mock_sf_compare.py`, figures in
+~/scratch/projects/nle_dsph/mock_sf/figures). Both roughly calibrated
+on 6 mocks each (walker23: rms z 1.01 vs 1.31; noSF: 1.18 vs 0.95) but
+the joint model is wider on every mock, half-width ratio 1.1-1.8 without
+selection and 1.4-3.7 with the Walker 2023 footprint. The position-factor
+leak, std over the posterior of log L_joint - log L_los (a constant for
+an exact Plummer factor), is 1.1-1.6 nats unselected and 2.0-3.6 nats
+selected. Exact posteriors are identical since the Plummer factor is
+theta-independent; the difference is learnability: the joint flow must
+learn a 2-D position density it is given for free in the conditional
+model, and any residual theta dependence of that factor is coherent
+across a galaxy's stars and amplified by a radial selection.
+
+## 12. Mixed-completeness test (2026-10-08)
+
+Models on 2 shards, arm-A architecture: v_los only (6xaw28uw),
+(v_x, v_y) only (ygaheh7u), all three (0i9cclad); `components` option in
+`RandomProjection`. Coverage on the same 100 galaxies, 2 km/s on v_los
+and 5 km/s on each proper-motion component:
+
+| likelihood | median half-width (dex) | rms z | frac abs(z)<=1 | mean z | KS p |
+|---|---|---|---|---|---|
+| v_los, all stars | 0.529 | 1.06 | 0.73 | +0.16 | 0.66 |
+| mixed: v_los on half, (v_x, v_y) on the other half | 0.552 | 1.00 | 0.78 | +0.20 | 0.25 |
+| 3-D, all stars | 0.491 | 1.04 | 0.80 | +0.13 | 0.18 |
+
+The mixed likelihood, a sum of two models' per-star terms over disjoint
+star subsets, is calibrated. Its width sits near the v_los-only width
+rather than between the two, which is what one expects when each star
+contributes one of the two informative components; the 3-D model on
+every star is 7% narrower.

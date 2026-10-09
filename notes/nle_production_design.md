@@ -522,8 +522,13 @@ half-widths within 15% (median ratio 0.98): the 11x larger training set
 does not change the posteriors on these mocks, which is consistent with
 the two models' per-star densities agreeing to ~0.04 nats and the width
 being set by the data. The exception is noSF CoreTan, +0.11 dex from T2
-and z = +3.3 (a seed re-sample and a T2 re-sample on that mock are in
-`mock_sf_production/seed_check/`). Summary: rms z 1.46 vs 1.09, mean z
+and z = +3.3. Re-sampling with a second seed (`mock_sf_production/
+seed_check*/`) reproduces each model: production 8.160 +- 0.069 (seed
+0: 8.163), T2 8.071 +- 0.088 (seed 0: 8.052). So the 0.1 dex offset on
+this one 200-star tangentially-anisotropic mock is a model difference,
+not sampler noise; on the other eleven the two models agree. One mock
+cannot say which is closer to the exact posterior; that is a question
+for the coverage test at a few hundred mocks. Summary: rms z 1.46 vs 1.09, mean z
 +0.69 vs +0.53, 6/12 within |z| <= 1 for both. The +0.5 mean z the T2
 page flagged persists with the larger model and the same twelve mocks;
 it needs the few-hundred-mock coverage test, not more training.

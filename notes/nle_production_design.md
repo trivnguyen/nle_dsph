@@ -527,3 +527,38 @@ and z = +3.3 (a seed re-sample and a T2 re-sample on that mock are in
 +0.69 vs +0.53, 6/12 within |z| <= 1 for both. The +0.5 mean z the T2
 page flagged persists with the larger model and the same twelve mocks;
 it needs the few-hundred-mock coverage test, not more training.
+
+## 15. sbi_inference (2026-10-08)
+
+`~/projects/sbi_dsph/sbi_inference` (git; copied from npe_inference with
+history, package still `npe_infer`) runs NPE and NLE checkpoints through
+one pipeline. Registry entries carry `kind`; NLE entries
+`nle_8p_v4_prod` (99r3e7ve) and `nle_8p_v4_t2` (37vbi58p). The NLE
+posterior stage (`npe_infer/nle_backend.py`) evaluates the batched
+per-star likelihood on the GPU for all walkers, with v_sys as a
+nuisance parameter and r_half fixed / Gaussian / uniform; sampler
+pocoMC by default (n_effective 512, n_active 256, evidence recorded) or
+emcee. Outputs are the NPE's files plus `nuisance.npy` and sampler
+diagnostics in the manifest; profiles, plots and the results reader are
+shared. Results under `~/scratch/sbi_inference/<model>/<target>/`.
+
+Self-check (`tests/test_nle_backend.py`, walker23 CuspIso mock, 510
+stars, r_half fixed, 10k samples), log10 rho(150 pc):
+
+| sampler | result | likelihood calls | notes |
+|---|---|---|---|
+| T2 emcee replay (reference) | 8.107 +- 0.035 | 320k | 64 x 5000 |
+| emcee 64 x 3000 | 8.110 +- 0.034 | 192k | tau_max 195, acceptance 0.05, 960 independent |
+| pocoMC | 8.112 +- 0.039 | 86k | log Z 989.57 +- 0.05, ESS 9.9k of 10k |
+
+pocoMC reaches the same posterior with 2-4x fewer likelihood calls and
+an effective sample size near the requested count, against ~1000
+independent samples from the emcee chain, whose 5% acceptance in the
+8-D box with prior-edge pile-ups is the reason the T2-era chains needed
+5000 steps. Hence the pocoMC default.
+
+Module drift between tara and Trillium found on the way: tsnpe's Prior
+here lacks the light-profile keywords (`fixed_cond`) the NPE prior
+builder passes (NLE path builds its box directly; the NPE kind would
+fail on tara until tsnpe is updated), and dsph_analysis lacks the
+binned-fit `overlap` keyword (passed only when supported).

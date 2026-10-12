@@ -31,8 +31,8 @@ from ml_collections import ConfigDict
 
 def get_config():
     config = ConfigDict()
-    config.seed_data = 213189751
-    config.seed_training = 792139710
+    config.seed_data = 976513
+    config.seed_training = 413245676
 
     config.data_root = '/home/tnguyen/scratch/projects/sbi_dsph/datasets'
     config.data_name = '10p_ZhaoPlumJeansBVH_ktwin'

@@ -61,7 +61,10 @@ def prepare_data(config: ml_collections.ConfigDict, norm_dict=None):
             config.data_root, config.data_name, config.num_datasets,
             labels=config.labels, cond_labels=config.get('cond_labels', None),
             init=config.get('init', 0))
-        device = 'cuda' if config.accelerator == 'gpu' else 'cpu'
+        # Lightning's accelerator name is not a torch device name:
+        # 'gpu' means CUDA here, 'mps' is Apple-silicon unified memory.
+        device = {'gpu': 'cuda', 'mps': 'mps'}.get(
+            config.accelerator, 'cpu')
         return datasets.prepare_device_dataloaders(
             data,
             train_frac=config.train_frac,

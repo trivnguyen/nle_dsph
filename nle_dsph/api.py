@@ -219,7 +219,20 @@ class Observation:
             fits a systemic velocity and subtracts it, so `v_sys` comes
             back near zero for a systemic-subtracted catalogue and near
             the systemic velocity for a heliocentric one.
-        vlos_err_kms: Per-star measurement sigma, (n_stars,) in km/s.
+        vlos_err_kms: Per-star measurement sigma, (n_stars,) in km/s,
+            **linear, not log10**. The flow conditions on sigma itself:
+            `UncertaintySampler` records the sampled standard deviation
+            and `NLE._normalize` applies a plain affine rescaling to it,
+            so a 1 km/s error is fed in as 1.0. The `jeffreys` and
+            `jeffreys_varied` options name the distribution sigma is
+            *drawn* from during training, not how it is represented.
+
+            Worth checking against whatever produced your catalog: an
+            sbi-style pipeline that appends `log10(sigma_v)` to theta
+            will hand you logs. Passing those here is silent -- a 1 km/s
+            error arrives as 0.0, normalizes to the bottom of the
+            trained range, and every star reads as near-noiseless, so
+            the posterior comes out tighter than the data supports.
         log_rstar_kpc: Measured half-light radius, log10 of kpc. The
             model's `cond`. Measured, but not therefore fixed: by
             default it is sampled as an extra posterior dimension over
@@ -232,7 +245,10 @@ class Observation:
         use: Which of the two the model is given, 'position' or
             'radius'. Inferred when only one is set; required when both
             are, because the choice is yours to make rather than this
-            container's.
+            container's. `galaxy_log_prob` additionally refuses
+            `use='position'` under a radius-conditioned model when
+            `R_proj_kpc` is set: that model derives the radius as
+            `|pos|`, so the measured column would go unread.
         log_rstar_err_dex: Photometric uncertainty on `log_rstar_kpc`,
             in dex. Required unless the conditioning is pinned. For
             LVDB dwarfs this runs from 0.008 dex (Sculptor, Draco) to
@@ -439,8 +455,11 @@ def galaxy_log_prob(model, obs, theta, v_sys=0.0, log_rstar=None):
         with any non-finite per-star density returns -inf.
 
     Raises:
-        ValueError: If `obs` supplies radii but the model needs sky
-            positions.
+        ValueError: If the observation's geometry does not match what
+            the model conditions on. Both directions are refused: a
+            radius-only observation under a model that needs sky
+            positions, and `use='position'` under a radius-conditioned
+            model that was handed a measured `R_proj_kpc`.
     """
     if obs.use == 'radius' and not model.condition_on_radius:
         raise ValueError(
@@ -448,6 +467,20 @@ def galaxy_log_prob(model, obs, theta, v_sys=0.0, log_rstar=None):
             'not radius-conditioned (condition_on_radius=False) and '
             'needs sky positions. Build the Observation with pos_kpc, '
             "or use='position' if you have both")
+
+    if (model.condition_on_radius and obs.use == 'position'
+            and obs.R_proj_kpc is not None):
+        # Reason: this model conditions on the projected radius, so
+        # with use='position' it would recompute one as |pos| and the
+        # R_proj_kpc you measured would never be read. Deriving a
+        # quantity the catalog already reports is the silent kind of
+        # wrong, so refuse rather than pick.
+        raise ValueError(
+            f'{obs.name} is radius-conditioned but was built with '
+            "use='position' while R_proj_kpc is set. The model would "
+            'recompute the radius as |pos| and ignore your measured '
+            "R_proj_kpc. Pass use='radius' to use it, or drop "
+            'R_proj_kpc to derive the radius from pos_kpc deliberately')
 
     theta = np.atleast_2d(np.asarray(theta, dtype=np.float32))
     n_cand, n_stars = theta.shape[0], obs.n_stars

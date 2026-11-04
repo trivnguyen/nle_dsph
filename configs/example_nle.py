@@ -25,6 +25,12 @@ def get_config():
     config.cond_labels = ('stellar_log_rstar_kpc',)
     config.train_frac = 0.8
     config.num_workers = 0
+    # Cap the stars used to measure the pos/vel/vel_error normalization.
+    # Those statistics are min/max and the pipeline redraws projection
+    # and noise each call, so no finite sample pins them down; a cap
+    # narrows them, which is a real effect, not just a speed-up. Leave
+    # unset to use every training star. theta/cond stay exact either way.
+    # config.norm_max_stars = 5_000_000
 
     ### LOGGING AND WANDB CONFIGURATION ###
     config.workdir = './runs'

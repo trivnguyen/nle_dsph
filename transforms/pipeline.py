@@ -58,7 +58,8 @@ def build_transformation(
 
 
 def compute_field_norm(
-    batch: StarBatch, batch_size: int = 4096, **pre_transform_kwargs
+    batch: StarBatch, batch_size: int = 4096, max_stars: int = None,
+    seed: int = 0, **pre_transform_kwargs
 ) -> dict:
     """Measure per-field normalization stats for the NLE model.
 
@@ -72,6 +73,16 @@ def compute_field_norm(
     Args:
         batch: Raw StarBatch with `pos`/`vel` (and `theta`) set.
         batch_size: Number of stars per streaming chunk.
+        max_stars: Measure the pos/vel/vel_error stats on at most this
+            many stars, drawn uniformly at random. Those stats are
+            approximate however many stars go in -- the pipeline draws
+            a fresh projection and fresh noise on every call, so no
+            finite sample pins them down -- while the cost is not:
+            every training star is pushed through the pipeline for
+            numbers a few million already resolve. `theta` and `cond`
+            are unaffected and stay exact; they are min/max over an
+            existing per-galaxy tensor and allocate nothing.
+        seed: Draws the subsample, so a rerun measures the same stats.
         **pre_transform_kwargs: Same kwargs as `build_transformation`.
 
     Returns:
@@ -83,7 +94,20 @@ def compute_field_norm(
     # Running per-component min/max over the transformed chunks. Exactly the
     # min/max of the concatenation, without holding every chunk in memory
     # (for 530M stars the concatenation alone was 17 GB of scratch).
-    n = batch.pos.shape[0]
+    pos_source, vel_source = batch.pos, batch.vel
+    n = pos_source.shape[0]
+    if max_stars is not None and n > max_stars:
+        # Reason: with replacement, so the draw stays O(max_stars) -- a
+        # randperm over 530M rows would itself allocate 4 GB. At these
+        # ratios repeats are rare and move no min or max.
+        generator = torch.Generator().manual_seed(seed)
+        rows = torch.randint(n, (max_stars,), generator=generator)
+        rows = rows.sort().values          # sorted: one ordered gather
+        pos_source, vel_source = pos_source[rows], vel_source[rows]
+        n = max_stars
+        print(f'Field normalization on {max_stars:,} of '
+              f'{batch.pos.shape[0]:,} stars')
+
     lo, hi = {}, {}
 
     def _update(name, value):
@@ -93,7 +117,8 @@ def compute_field_norm(
 
     for start in range(0, n, batch_size):
         stop = start + batch_size
-        chunk = StarBatch(pos=batch.pos[start:stop], vel=batch.vel[start:stop])
+        chunk = StarBatch(pos=pos_source[start:stop],
+                          vel=vel_source[start:stop])
         out = pipeline(chunk)
         _update('pos', out.pos)
         _update('vel', out.vel)

@@ -203,7 +203,8 @@ def _split_by_galaxy(num_stars, train_frac, seed):
 # Normalization
 # ---------------------------------------------------------------------------
 
-def _compute_norm(pos, vel, theta, cond, pre_transform_kwargs):
+def _compute_norm(pos, vel, theta, cond, pre_transform_kwargs,
+                  norm_max_stars=None, seed=0):
     """Compute per-field normalization stats from training stars.
 
     Delegates to `transforms.compute_field_norm`, which streams the stars
@@ -213,7 +214,7 @@ def _compute_norm(pos, vel, theta, cond, pre_transform_kwargs):
     """
     return compute_field_norm(
         StarBatch(pos=pos, vel=vel, theta=theta, cond=cond),
-        **pre_transform_kwargs)
+        max_stars=norm_max_stars, seed=seed, **pre_transform_kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -228,7 +229,8 @@ def _mask(t, m):
 def prepare_dataloaders(
     node_feats, graph_feats, labels, cond_labels=None, train_frac=0.8,
     train_batch_size=1024, eval_batch_size=1024, num_workers=1,
-    norm_dict=None, seed=0, pre_transform_kwargs=None
+    norm_dict=None, seed=0, pre_transform_kwargs=None,
+    norm_max_stars=None
 ):
     """Prepare per-star train/val dataloaders from Cartesian phase space.
 
@@ -252,7 +254,8 @@ def prepare_dataloaders(
     if norm_dict is None:
         print('Computing norm_dict from training stars...')
         norm_dict = _compute_norm(
-            pos[tr], vel[tr], theta[tr], _mask(cond, tr), pre_transform_kwargs)
+            pos[tr], vel[tr], theta[tr], _mask(cond, tr),
+            pre_transform_kwargs, norm_max_stars=norm_max_stars, seed=seed)
 
     train_loader = DataLoader(
         StarDataset(pos[tr], vel[tr], theta[tr], _mask(cond, tr)),
@@ -438,6 +441,7 @@ def prepare_device_dataloaders(
     data, train_frac=0.8, train_batch_size=1024, eval_batch_size=1024,
     norm_dict=None, seed=0, pre_transform_kwargs=None, max_val_galaxies=None,
     deterministic_val=True, device='cuda', norm_chunk=65536,
+    norm_max_stars=None,
 ):
     """Device-path counterpart of `prepare_dataloaders`.
 
@@ -503,7 +507,8 @@ def prepare_device_dataloaders(
                 StarBatch(pos=pos[train_idx], vel=vel[train_idx],
                           theta=theta_gal[tg],
                           cond=None if cond_gal is None else cond_gal[tg]),
-                batch_size=norm_chunk, **pre_transform_kwargs)
+                batch_size=norm_chunk, max_stars=norm_max_stars,
+                seed=seed, **pre_transform_kwargs)
         norm_dict = {k: [float(x) for x in v] for k, v in norm_dict.items()}
         if 'cuda' in str(device):
             torch.cuda.empty_cache()

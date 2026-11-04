@@ -29,10 +29,10 @@ import numpy as np
 import pandas as pd
 import torch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from nle import NLE  # noqa: E402
-from transforms import StarBatch  # noqa: E402
-from diagnostics.pit_by_regime import best_checkpoint  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from nle_dsph.nle import NLE  # noqa: E402
+from nle_dsph.transforms import StarBatch  # noqa: E402
+from scripts.diagnostics.pit_by_regime import best_checkpoint  # noqa: E402
 
 DATA = Path(os.path.expanduser(
     '~/scratch/projects/sbi_dsph/datasets/10p_ZhaoPlumJeansBVH_ktwin'))

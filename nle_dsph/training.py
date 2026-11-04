@@ -4,7 +4,9 @@ Adapted from the jgnn package to keep the wandb/checkpoint/trainer
 boilerplate identical to train_npe.
 """
 
+import json
 import os
+import shutil
 import socket
 from pathlib import Path
 from typing import Optional
@@ -18,6 +20,9 @@ from pytorch_lightning.callbacks import (
     ModelCheckpoint,
     LearningRateMonitor,
 )
+
+from nle_dsph import datasets
+from nle_dsph.nle import NLE
 
 
 def _wandb_server_reachable(timeout: float = 3.0) -> bool:
@@ -197,3 +202,108 @@ def fit(
         trainer.fit(model, train_loader, val_loader)
 
     print("[Training] Training complete!")
+
+
+def save_config_snapshot(
+    config: ml_collections.ConfigDict, snapshot_dir: Path,
+    config_path: str = None,
+) -> None:
+    """Write a JSON (and .py) config snapshot next to the checkpoints.
+
+    Lets downstream consumers reconstruct the model / pre_transforms from
+    the checkpoint directory alone, without wandb.
+    """
+    snapshot_path = snapshot_dir / 'config_snapshot.json'
+    with open(snapshot_path, 'w') as f:
+        json.dump(config.to_dict(), f, indent=2, default=str)
+    print(f"[Setup] Wrote config snapshot -> {snapshot_path}")
+
+    if config_path and os.path.exists(config_path):
+        shutil.copy2(config_path, snapshot_dir / 'config_snapshot.py')
+
+
+def prepare_data(config: ml_collections.ConfigDict, norm_dict=None):
+    """Load data and build per-star train/val dataloaders.
+
+    Returns (train_loader, val_loader, norm_dict). When `norm_dict` is given
+    (e.g. reused from a resumed checkpoint) it is passed through unchanged
+    instead of recomputing field stats from this call's training data.
+
+    With `config.data_on_device` the whole dataset is loaded shard-wise in
+    float32, moved to the accelerator and batched by indexing
+    (`datasets.prepare_device_dataloaders`); otherwise the original
+    DataLoader path is used.
+    """
+    if config.get('data_on_device', False):
+        data = datasets.read_datasets_f32(
+            config.data_root, config.data_name, config.num_datasets,
+            labels=config.labels, cond_labels=config.get('cond_labels', None),
+            init=config.get('init', 0))
+        # Lightning's accelerator name is not a torch device name:
+        # 'gpu' means CUDA here, 'mps' is Apple-silicon unified memory.
+        device = {'gpu': 'cuda', 'mps': 'mps'}.get(
+            config.accelerator, 'cpu')
+        return datasets.prepare_device_dataloaders(
+            data,
+            train_frac=config.train_frac,
+            train_batch_size=config.train_batch_size,
+            eval_batch_size=config.eval_batch_size,
+            norm_dict=norm_dict,
+            seed=config.seed_data,
+            pre_transform_kwargs=config.pre_transforms.to_dict(),
+            max_val_galaxies=config.get('max_val_galaxies', None),
+            norm_max_stars=config.get('norm_max_stars', None),
+            deterministic_val=config.get('deterministic_val', True),
+            device=device,
+        )
+
+    node_feats, graph_feats = datasets.read_datasets(
+        config.data_root,
+        config.data_name,
+        config.num_datasets,
+        init=config.get('init', 0),
+        is_directory=True,
+        concat=True,
+    )
+
+    train_loader, val_loader, norm_dict = datasets.prepare_dataloaders(
+        node_feats,
+        graph_feats,
+        config.labels,
+        cond_labels=config.get('cond_labels', None),
+        train_batch_size=config.train_batch_size,
+        eval_batch_size=config.eval_batch_size,
+        train_frac=config.train_frac,
+        num_workers=config.num_workers,
+        seed=config.seed_data,
+        norm_dict=norm_dict,
+        pre_transform_kwargs=config.pre_transforms.to_dict(),
+        norm_max_stars=config.get('norm_max_stars', None),
+    )
+
+    return train_loader, val_loader, norm_dict
+
+
+def create_model(
+    config: ml_collections.ConfigDict, pre_transforms, norm_dict,
+) -> NLE:
+    """Create the NLE model from the config."""
+    print("[Model] Creating NLE model...")
+    context_embedding = config.model.get('context_embedding', None)
+    if context_embedding is not None:
+        context_embedding = context_embedding.to_dict()
+
+    return NLE(
+        norm_dict=norm_dict,
+        condition_on_position=config.model.get('condition_on_position', False),
+        condition_on_radius=config.model.get('condition_on_radius', False),
+        # Reason: a model trained without measurement noise has no sigma
+        # to condition on.
+        condition_on_error=config.pre_transforms.get(
+            'apply_uncertainty', True),
+        flows_args=config.model.flows.to_dict(),
+        context_embedding_args=context_embedding,
+        optimizer_args=config.optimizer.to_dict(),
+        scheduler_args=config.scheduler.to_dict(),
+        pre_transforms=pre_transforms,
+    )

@@ -191,7 +191,7 @@ trap 'log "received INT (Ctrl-C)"' INT
 
 cd "$NLE_DIR" || exit 1
 
-RUNNER=(python3 train_nle.py --config "$CONFIG" "${EXTRA_ARGS[@]}" --config.enable_progress_bar=False)
+RUNNER=(python3 scripts/train_nle.py --config "$CONFIG" "${EXTRA_ARGS[@]}" --config.enable_progress_bar=False)
 
 # The wall-clock limit is enforced by a watchdog rather than timeout(1),
 # which macOS does not ship: TERM first so Lightning can write its

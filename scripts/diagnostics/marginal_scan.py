@@ -26,12 +26,12 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from infer_nle import PRIOR_MIN, PRIOR_MAX, LABELS  # noqa: E402
-from diagnostics.pit_by_regime import load_shard  # noqa: E402
-from diagnostics.marginal_test import (  # noqa: E402
+from scripts.diagnostics.pit_by_regime import load_shard  # noqa: E402
+from scripts.diagnostics.marginal_test import (  # noqa: E402
     OUT, load_models, log_prob_rows, marginal_los, marginal_pm)
-from diagnostics.plot_marginal import STYLE  # noqa: E402
+from scripts.diagnostics.plot_marginal import STYLE  # noqa: E402
 
 PMIN, PMAX = PRIOR_MIN[:7], PRIOR_MAX[:7]
 

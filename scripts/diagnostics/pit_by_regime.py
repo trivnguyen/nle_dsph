@@ -21,9 +21,9 @@ import numpy as np
 import pandas as pd
 import torch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from nle import NLE  # noqa: E402
-from transforms import StarBatch  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from nle_dsph.nle import NLE  # noqa: E402
+from nle_dsph.transforms import StarBatch  # noqa: E402
 
 LABELS = ('dm_alpha', 'dm_beta', 'dm_gamma', 'dm_log_rdm', 'dm_log_rho0',
           'df_beta0', 'df_log_ra')

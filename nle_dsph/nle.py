@@ -1,15 +1,10 @@
-"""Neural Likelihood Estimation (NLE) module for per-star dwarf-galaxy data.
+"""Neural Likelihood Estimation (NLE).
 
-The model learns the single-star likelihood p(observables | theta, cond)
+The model learns the likelihood p(observables | theta, cond) for a single star
 with a conditional normalizing flow, and can sample observables from it.
-It deliberately does ONLY what it is trained on (per-star density + sampling)
--- assumptions like i.i.d. stars, priors, fixing/sampling `cond`, and MCMC
-live outside the model.
 
-Velocity is always modeled; sky position is modeled too by default, or fed
-as context when `condition_on_position=True`. `theta` (inferred) and `cond`
-(measured, e.g. the half-light radius) are always context, kept as separate
-fields so callers can sample `theta` while fixing or MC-sampling `cond`.
+Velocity is always modeled in the NF. The sky positions are modeled too by default, or fed
+as context when `condition_on_position=True` and/or `condition_on_radius=True`.
 """
 
 import pytorch_lightning as pl
@@ -17,8 +12,8 @@ import torch
 import torch.nn as nn
 import zuko
 
-from transforms import StarBatch
-from utils import MLP, configure_optimizers, get_activation
+from nle_dsph.transforms import StarBatch
+from nle_dsph.utils import MLP, configure_optimizers, get_activation
 
 
 def build_flow(

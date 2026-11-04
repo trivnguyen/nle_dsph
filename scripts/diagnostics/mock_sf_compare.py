@@ -28,13 +28,13 @@ import numpy as np
 import pandas as pd
 import torch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 sys.path.insert(0, os.path.expanduser('~/my_modules'))
 import dsph_analysis.kinematic_io as kio  # noqa: E402
-from nle import NLE  # noqa: E402
-from transforms import StarBatch  # noqa: E402
+from nle_dsph.nle import NLE  # noqa: E402
+from nle_dsph.transforms import StarBatch  # noqa: E402
 from infer_nle import PRIOR_MIN, PRIOR_MAX, LABELS, log_rho_150  # noqa: E402
-from diagnostics.pit_by_regime import best_checkpoint  # noqa: E402
+from scripts.diagnostics.pit_by_regime import best_checkpoint  # noqa: E402
 
 MOCKS = Path(os.path.expanduser('~/scratch/vr_catalogs/vr_catalogs/mock/icrs'))
 SETS = {'walker23': 'draco1_walker23_icrs', 'noSF': 'draco1_walker23_noSF'}

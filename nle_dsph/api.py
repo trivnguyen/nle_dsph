@@ -112,6 +112,10 @@ def train(config, config_path=None):
     short runs from a notebook, and the script (or
     `slurm/train_nle.sh`) for anything that must survive a logout.
 
+    Honors `config.checkpoint` and `config.reset_optimizer`: with a
+    checkpoint set it resumes from it and reuses that checkpoint's
+    `norm_dict` instead of remeasuring one.
+
     Args:
         config: Config as returned by `load_config`.
         config_path: Optional path to the config file, for the snapshot.
@@ -128,7 +132,23 @@ def train(config, config_path=None):
     """
     logger, project_dir = training.create_wandb_logger(config, tag='nle')
 
-    train_loader, val_loader, norm_dict = training.prepare_data(config)
+    # Resume, if the config asks for it. The norm_dict comes from the
+    # resumed checkpoint rather than being remeasured: recomputing it
+    # from this call's data would rescale every input the model was
+    # fitted against, which no amount of further training recovers.
+    checkpoint_path, norm_dict = None, None
+    if config.get('checkpoint'):
+        checkpoint_path = training.get_checkpoint_path(config, project_dir)
+        reset = config.get('reset_optimizer', False)
+        print(f'[Checkpoint] Resuming from: {checkpoint_path}')
+        print(f'[Checkpoint] Reset optimizer: {reset}')
+        resumed = torch.load(checkpoint_path, map_location='cpu',
+                             weights_only=False)
+        norm_dict = resumed['hyper_parameters']['norm_dict']
+        print('[Checkpoint] Reusing norm_dict from resumed checkpoint')
+
+    train_loader, val_loader, norm_dict = training.prepare_data(
+        config, norm_dict=norm_dict)
     pre_transforms = build_transformation(**config.pre_transforms.to_dict())
     model = training.create_model(config, pre_transforms, norm_dict)
 
@@ -150,7 +170,8 @@ def train(config, config_path=None):
 
     pl.seed_everything(config.seed_training, workers=True)
     training.fit(trainer, model, train_loader, val_loader,
-                 checkpoint_path=None, reset_optimizer=False)
+                 checkpoint_path=checkpoint_path,
+                 reset_optimizer=config.get('reset_optimizer', False))
 
     # Reason: Lightning resolves the checkpoint directory from the logger
     # during `fit`, and it does not always agree with

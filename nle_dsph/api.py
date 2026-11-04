@@ -57,9 +57,9 @@ OPTIONAL_FIELDS = frozenset({
     'checkpoint', 'cond_labels', 'data_on_device', 'debug',
     'deterministic_val', 'enable_progress_bar', 'entity',
     'gradient_clip_val', 'id', 'init', 'matmul_precision',
-    'max_val_galaxies', 'name', 'precision', 'reset_optimizer',
-    'save_top_k', 'tags', 'val_check_interval', 'wandb_mode',
-    'wandb_project',
+    'max_val_galaxies', 'name', 'norm_max_stars', 'precision',
+    'reset_optimizer', 'save_top_k', 'tags',
+    'val_check_interval', 'wandb_mode', 'wandb_project',
 })
 
 
@@ -150,6 +150,12 @@ def train(config, config_path=None):
     train_loader, val_loader, norm_dict = training.prepare_data(
         config, norm_dict=norm_dict)
     pre_transforms = build_transformation(**config.pre_transforms.to_dict())
+    # Reason: the flow is initialized here, so the seed has to be set
+    # before it, not merely before `fit`. Seeding only before training
+    # left initialization at the mercy of whatever consumed the global
+    # RNG earlier -- wandb minting a run id, most visibly -- so two
+    # runs of one config produced different models.
+    pl.seed_everything(config.seed_training, workers=True)
     model = training.create_model(config, pre_transforms, norm_dict)
 
     trainer_kwargs = dict(num_sanity_val_steps=0)

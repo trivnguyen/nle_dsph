@@ -252,6 +252,7 @@ def prepare_data(config: ml_collections.ConfigDict, norm_dict=None):
             seed=config.seed_data,
             pre_transform_kwargs=config.pre_transforms.to_dict(),
             max_val_galaxies=config.get('max_val_galaxies', None),
+            norm_max_stars=config.get('norm_max_stars', None),
             deterministic_val=config.get('deterministic_val', True),
             device=device,
         )
@@ -277,6 +278,7 @@ def prepare_data(config: ml_collections.ConfigDict, norm_dict=None):
         seed=config.seed_data,
         norm_dict=norm_dict,
         pre_transform_kwargs=config.pre_transforms.to_dict(),
+        norm_max_stars=config.get('norm_max_stars', None),
     )
 
     return train_loader, val_loader, norm_dict

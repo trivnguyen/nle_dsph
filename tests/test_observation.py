@@ -81,3 +81,44 @@ def test_model_positions_passes_positions_through():
     packed = Observation(pos_kpc=POS, **BASE).model_positions()
 
     assert np.allclose(packed, POS.astype(np.float32))
+
+
+class _FakeModel:
+    """Minimal stand-in: galaxy_log_prob reads only this flag first."""
+
+    def __init__(self, condition_on_radius):
+        self.condition_on_radius = condition_on_radius
+
+
+def test_radius_model_refuses_position_when_a_radius_was_measured():
+    """The model would derive |pos| and ignore the measured R_proj."""
+    from nle_dsph.api import galaxy_log_prob
+
+    obs = Observation(pos_kpc=POS, R_proj_kpc=RADII, use='position', **BASE)
+    assert raises(ValueError, 'ignore your measured', galaxy_log_prob,
+                  _FakeModel(condition_on_radius=True), obs,
+                  np.zeros((1, 7)))
+
+
+def test_radius_model_accepts_positions_when_no_radius_was_measured():
+    """Deriving the radius is fine when the catalog gave no R column:
+    that is exactly what training does with the projected (X, Y)."""
+    from nle_dsph.api import galaxy_log_prob
+
+    obs = Observation(pos_kpc=POS, **BASE)
+    try:
+        galaxy_log_prob(_FakeModel(condition_on_radius=True), obs,
+                        np.zeros((1, 7)))
+    except ValueError as error:          # the geometry guard fired
+        raise AssertionError(f'should have been allowed: {error}')
+    except AttributeError:
+        pass                             # past the guard, stub has no net
+
+
+def test_position_model_still_refuses_a_radius_only_observation():
+    from nle_dsph.api import galaxy_log_prob
+
+    obs = Observation(R_proj_kpc=RADII, **BASE)
+    assert raises(ValueError, 'needs sky positions', galaxy_log_prob,
+                  _FakeModel(condition_on_radius=False), obs,
+                  np.zeros((1, 7)))

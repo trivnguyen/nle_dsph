@@ -69,6 +69,11 @@ def main(config: ml_collections.ConfigDict, config_path: str = None):
     pre_transforms = build_transformation(**config.pre_transforms.to_dict())
 
     print("[Model] Creating NLE model...")
+    # Reason: the flow is initialized here, so the seed has to be set
+    # before it, not merely before `fit`. Seeding only before training
+    # left initialization drawing from torch's entropy-seeded default
+    # generator, so two runs of one config produced different models.
+    pl.seed_everything(config.seed_training, workers=True)
     model = create_model(config, pre_transforms, norm_dict)
     summarize(model, max_depth=3)
     training.report_param_counts(model)

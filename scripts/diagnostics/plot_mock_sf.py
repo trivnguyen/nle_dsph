@@ -34,14 +34,14 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
-HERE = Path(__file__).resolve().parents[1]
+HERE = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, os.path.expanduser('~/my_modules'))
 import dsph_analysis.kinematic_io as kio  # noqa: E402
 from dsph_analysis import vdisp, vkurtosis  # noqa: E402
-from diagnostics.profiles import (  # noqa: E402
+from scripts.diagnostics.profiles import (  # noqa: E402
     zhao_logrho, zhao_slope, band, moments, R_GRID, LABELS_KPC)
-from diagnostics.mock_sf_compare import (  # noqa: E402
+from scripts.diagnostics.mock_sf_compare import (  # noqa: E402
     MOCKS, SETS, PROFILES, OUT, load_mock, truth_labels)
 
 # Okabe-Ito blue and vermillion; line style and marker as second channel.

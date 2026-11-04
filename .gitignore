@@ -4,3 +4,7 @@ __pycache__/
 .ipynb_checkpoints/
 wandb/
 runs/
+
+# training output: regenerable, and 28 MB of checkpoints
+notebooks/example_runs/
+notebooks/profile_figure/

@@ -27,10 +27,10 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import diagnostics.plot_mock_sf as pms  # noqa: E402
-from diagnostics.plot_mock_sf import LABELS_KPC, to_kpc  # noqa: E402
-from diagnostics.pit_by_regime import load_shard  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+import scripts.diagnostics.plot_mock_sf as pms  # noqa: E402
+from scripts.diagnostics.plot_mock_sf import LABELS_KPC, to_kpc  # noqa: E402
+from scripts.diagnostics.pit_by_regime import load_shard  # noqa: E402
 
 MARG = Path(os.path.expanduser('~/scratch/projects/nle_dsph/marginal'))
 # Okabe-Ito blue / vermillion / bluish green.
@@ -92,10 +92,16 @@ def main() -> None:
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     gal = a.galaxies
     if gal is None:
-        gal = sorted(int(re.search(r'truth_g(\d+)', f).group(1))
-                     for f in glob.glob(str(MARG / 'truth_g*.npy'))
-                     if all((MARG / f"chain_g{re.search(r'truth_g(\d+)', f).group(1)}_{c}.npy").exists()
-                            for c in STYLE))
+        # Reason: the galaxy id was re-extracted inside an f-string, which
+        # is a SyntaxError before Python 3.12 (backslash in the expression).
+        def galaxy_id(path):
+            return re.search(r'truth_g(\d+)', path).group(1)
+
+        gal = sorted(
+            int(galaxy_id(f))
+            for f in glob.glob(str(MARG / 'truth_g*.npy'))
+            if all((MARG / f'chain_g{galaxy_id(f)}_{c}.npy').exists()
+                   for c in STYLE))
     (MARG / 'figures').mkdir(exist_ok=True)
     pool = Pool(8)
     for g in gal:

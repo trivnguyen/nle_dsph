@@ -1,38 +1,32 @@
-"""Profile helpers for the NLE diagnostics (no npe_gap dependency).
+"""Jeans-model helpers and plot bands for the NLE diagnostics.
 
-Zhao density and slope from label vectors, 16-84% bands, and the
-line-of-sight dispersion and kurtosis of the Jeans model via
+The line-of-sight dispersion and kurtosis of the Jeans model via
 dsph_analysis.sph_model.GeneralizedOMJeans (fourth-order Jeans with
-beta' = beta, the GravSphere assumption).
+beta' = beta, the GravSphere assumption), plus the 16-84% band helper.
+
+The analytic Zhao density and slope used to live here too; they are
+pure numpy with no external dependency, so they now live in
+`nle_dsph.profiles` and are re-exported below for callers that still
+import them from this module.
 """
 
 import os
 import sys
+from pathlib import Path
 
 import numpy as np
 from matplotlib.colors import to_rgba
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 sys.path.insert(0, os.path.expanduser('~/my_modules'))
 from dsph_analysis.sph_model import GeneralizedOMJeans  # noqa: E402
+
+from nle_dsph.profiles import zhao_logrho, zhao_slope  # noqa: E402,F401
 
 LOG_RHO_UNIT = 7.0  # sph_model's density unit, 1e7 Msun/kpc^3
 R_GRID = np.logspace(-2, 0.7, 60)   # kpc
 LABELS_KPC = ['dm_alpha', 'dm_beta', 'dm_gamma', 'log10 r_dm [kpc]',
               'log10 rho0', 'df_beta0', 'log10 r_a [kpc]']
-
-
-def zhao_logrho(theta, r):
-    """log10 rho(r) [Msun/kpc^3]; theta rows with r_dm in kpc."""
-    a, b, g, lrdm, lrho0 = (theta[:, i:i + 1] for i in range(5))
-    x = r[None, :] / 10 ** lrdm
-    return lrho0 - g * np.log10(x) + (g - b) / a * np.log10(1 + x ** a)
-
-
-def zhao_slope(theta, r):
-    """d ln rho / d ln r; theta rows with r_dm in kpc."""
-    a, b, g, lrdm = (theta[:, i:i + 1] for i in range(4))
-    x = r[None, :] / 10 ** lrdm
-    return -g + (g - b) * x ** a / (1 + x ** a)
 
 
 def om_jeans_theta(theta, log_rstar):

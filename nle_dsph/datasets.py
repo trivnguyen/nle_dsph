@@ -16,7 +16,9 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
-from transforms import StarBatch, build_transformation, compute_field_norm
+from nle_dsph.transforms import (
+    StarBatch, build_transformation, compute_field_norm,
+)
 
 
 def read_graph_dataset(path, features_list=None, concat=False, to_array=True):

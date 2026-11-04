@@ -96,5 +96,5 @@ trap on_exit EXIT
 trap 'log "received TERM (likely time limit approaching)"' TERM
 
 cd "$NPE_DIR"
-python3 train_nle.py --config "$CONFIG" "${EXTRA_ARGS[@]}" --config.enable_progress_bar=False 2>&1 | tee -a "$RUN_DIR/stdout.log"
+python3 scripts/train_nle.py --config "$CONFIG" "${EXTRA_ARGS[@]}" --config.enable_progress_bar=False 2>&1 | tee -a "$RUN_DIR/stdout.log"
 exit "${PIPESTATUS[0]}"

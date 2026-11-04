@@ -1,14 +1,21 @@
 # Tutorials
 
-Hand-maintained notebooks that walk through one test each, with the
-derivation, the operations written out cell by cell, and the batch
-results. They are shared material: edit them in Jupyter directly. The
-batch versions of the same steps are `diagnostics/*.py`.
+Hand-maintained notebooks. Edit them in Jupyter directly.
 
-| notebook | question | batch script |
-|---|---|---|
-| `03_error_convolution.ipynb` | Does a noise-trained NLE equal the noiseless NLE convolved with the error kernel? | `diagnostics/check_error_convolution.py` |
-| `04_mock_sf.ipynb` | Does modelling the sky positions, p(x, y, v), change the posterior relative to p(v \| R)? | `diagnostics/mock_sf_compare.py`, `plot_mock_sf.py` |
+| notebook | question |
+|---|---|
+| `00_nle_frontend.ipynb` | How do I train a model and sample a posterior from it? |
+| `01_nle_internals.ipynb` | What do those four API calls actually do? |
 
-Run from this directory with the `torch` venv and `~/my_modules` on
-`PYTHONPATH` (the first cell sets both up).
+Start with `00`. Read `01` once when you want to change something the API
+does not expose; its last cell maps each step back onto the `api` call that
+replaces it.
+
+Run from this directory, with the `torch` venv.
+
+`example_config.py` is the documented config: every field carries a comment.
+`CONFIG.md` has the same notes grouped into tables. Copy `example_config.py`
+and strip the comments when you make a config of your own.
+
+The batch twins live in `scripts/`: `train_nle.py` for training (same config
+file, same run directory) and `diagnostics/` for the per-test scripts.

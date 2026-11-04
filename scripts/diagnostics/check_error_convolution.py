@@ -35,10 +35,10 @@ import torch
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt  # noqa: E402
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from nle import NLE  # noqa: E402
-from transforms import StarBatch  # noqa: E402
-from diagnostics.pit_by_regime import (  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from nle_dsph.nle import NLE  # noqa: E402
+from nle_dsph.transforms import StarBatch  # noqa: E402
+from scripts.diagnostics.pit_by_regime import (  # noqa: E402
     best_checkpoint, load_shard, LABELS)
 
 
